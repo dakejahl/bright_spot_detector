@@ -5,19 +5,16 @@
 #include <opencv2/opencv.hpp>
 
 cv::Mat processImage(const cv::Mat& img) {
-    // Convert to grayscale
-    cv::Mat img_gray;
-    cv::cvtColor(img, gray, cv::COLOR_BGR2GRAY);
-
     // Apply Gaussian blur
+    cv::Mat img_processed;
     int blurRadius = 5; // Set Gaussian blur radius. Must be an odd number to ensure a central pixel for symmetric blurring.
     if (blurRadius % 2 == 0) ++blurRadius;
-    cv::GaussianBlur(img_gray, img_gray, cv::Size(blurRadius, blurRadius), 0);
+    cv::GaussianBlur(img, img_processed, cv::Size(blurRadius, blurRadius), 0);
 
     // Find the brightest spot
     double minVal, maxVal;
     cv::Point minLoc, maxLoc;
-    cv::minMaxLoc(img_gray, &minVal, &maxVal, &minLoc, &maxLoc);
+    cv::minMaxLoc(img_processed, &minVal, &maxVal, &minLoc, &maxLoc);
 
     // Mark the brightest spot on the original image
     cv::Mat result = img.clone();
