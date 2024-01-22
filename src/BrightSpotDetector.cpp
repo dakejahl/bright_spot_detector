@@ -39,13 +39,13 @@ public:
 private:
     void image_callback(const sensor_msgs::msg::Image::SharedPtr msg) {
         try {
-            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::BGR8);
+            cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
             cv::Mat processed_image = processImage(cv_ptr->image);
 
             // Convert the processed OpenCV Image back to ROS Image message
             cv_bridge::CvImage out_msg;
             out_msg.header = msg->header; // Same timestamp and tf frame as input image
-            out_msg.encoding = sensor_msgs::image_encodings::BGR8; // Or whatever encoding is suitable
+            out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever encoding is suitable
             out_msg.image = processed_image;
 
             // Publish the processed image
