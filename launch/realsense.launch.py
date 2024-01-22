@@ -13,7 +13,7 @@ def generate_launch_description():
             'enable_infra2': False, # Disable the second IR camera if not needed
             'enable_color': False,  # Disable other streams if not needed
             'enable_depth': False,
-            # Other necessary parameters
+            'depth_module.emitter_enabled': 0,
         }],
     )
 
