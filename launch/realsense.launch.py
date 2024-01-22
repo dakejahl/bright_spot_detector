@@ -18,13 +18,13 @@ def generate_launch_description():
     )
 
     # Brightest spot detector node
-    brightest_spot_detector_node = Node(
-        package='brightest_spot_detector',  # Replace with your package name
-        executable='brightest_spot_detector',  # Replace with the name of your executable
-        name='brightest_spot_detector',
+    bright_spot_detector_node = Node(
+        package='bright_spot_detector',  # Replace with your package name
+        executable='bright_spot_detector',  # Replace with the name of your executable
+        name='bright_spot_detector',
     )
 
     return launch.LaunchDescription([
         realsense_camera_node,
-        brightest_spot_detector_node
+        bright_spot_detector_node
     ])

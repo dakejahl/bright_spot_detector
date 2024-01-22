@@ -28,12 +28,12 @@ cv::Mat processImage(const cv::Mat& img) {
 
 class BrightSpotDetectorNode : public rclcpp::Node {
 public:
-    BrightSpotDetectorNode() : Node("brightest_spot_node") {
+    BrightSpotDetectorNode() : Node("bright_spot_detector_node") {
         auto qos = rclcpp::QoS(rclcpp::QoSInitialization(RMW_QOS_POLICY_HISTORY_KEEP_LAST, 5));
         qos.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
 
         _image_sub = this->create_subscription<sensor_msgs::msg::Image>(
-            "/camera/image", qos, std::bind(&BrightSpotDetectorNode::image_callback, this, std::placeholders::_1));
+            "/camera/infra1/image_rect_raw", qos, std::bind(&BrightSpotDetectorNode::image_callback, this, std::placeholders::_1));
 
         _image_pub = this->create_publisher<sensor_msgs::msg::Image>(
             "/processed_image", qos);
