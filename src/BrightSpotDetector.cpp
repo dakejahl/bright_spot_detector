@@ -11,16 +11,16 @@ cv::Mat processImage(const cv::Mat& img) {
     if (blurRadius % 2 == 0) ++blurRadius;
     cv::GaussianBlur(img, img_processed, cv::Size(blurRadius, blurRadius), 0);
 
-    // Find the brightest spot
+    // Convert the grayscale image to BGR for displaying the red circle
+    cv::cvtColor(img_processed, img_processed, cv::COLOR_GRAY2BGR);
+
+    // Find the brightest spot and draw a red circle
     double minVal, maxVal;
     cv::Point minLoc, maxLoc;
     cv::minMaxLoc(img_processed, &minVal, &maxVal, &minLoc, &maxLoc);
+    cv::circle(img_processed, maxLoc, 5, cv::Scalar(0, 0, 255), 2); // Red circle
 
-    // Mark the brightest spot on the original image
-    cv::Mat result = img.clone();
-    cv::circle(result, maxLoc, blurRadius, cv::Scalar(255, 0, 0), 2);
-
-    return result;
+    return img_processed;
 }
 
 class BrightSpotDetectorNode : public rclcpp::Node {
@@ -45,7 +45,7 @@ private:
             // Convert the processed OpenCV Image back to ROS Image message
             cv_bridge::CvImage out_msg;
             out_msg.header = msg->header; // Same timestamp and tf frame as input image
-            out_msg.encoding = sensor_msgs::image_encodings::MONO8; // Or whatever encoding is suitable
+            out_msg.encoding = sensor_msgs::image_encodings::BGR8;
             out_msg.image = processed_image;
 
             // Publish the processed image
