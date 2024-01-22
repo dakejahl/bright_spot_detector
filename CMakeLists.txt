@@ -13,7 +13,7 @@ find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
 
 # Define the executable
-add_executable(bright_spot_detector src/bright_spot_detector.cpp)
+add_executable(bright_spot_detector src/BrightSpotDetector.cpp)
 
 # Specify dependencies to link against
 ament_target_dependencies(bright_spot_detector
