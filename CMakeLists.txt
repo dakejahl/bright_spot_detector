@@ -39,7 +39,7 @@ if(BUILD_TESTING)
 endif()
 
 # Install launch files, config files, etc. (if you have any)
-install(DIRECTORY launch config
+install(DIRECTORY launch
   DESTINATION share/${PROJECT_NAME}/
 )
 

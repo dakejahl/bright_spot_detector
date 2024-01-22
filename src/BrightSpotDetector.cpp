@@ -49,7 +49,7 @@ private:
             out_msg.image = processed_image;
 
             // Publish the processed image
-            _image_pub->publish(out_msg.toImageMsg());
+            _image_pub->publish(*out_msg.toImageMsg().get());
 
         } catch (const cv_bridge::Exception& e) {
             RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
