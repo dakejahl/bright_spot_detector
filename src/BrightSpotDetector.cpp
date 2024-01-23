@@ -56,7 +56,7 @@ public:
             "/camera/infra1/image_rect_raw", qos, std::bind(&BrightSpotDetectorNode::image_callback, this, std::placeholders::_1));
 
         _image_pub = this->create_publisher<sensor_msgs::msg::Image>(
-            "/ir_spotter", qos);
+            "/bright_spot_detector", qos);
     }
 
 private:
