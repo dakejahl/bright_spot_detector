@@ -22,10 +22,10 @@ def generate_launch_description():
         package='bright_spot_detector',  # Replace with your package name
         executable='bright_spot_detector',  # Replace with the name of your executable
         name='bright_spot_detector',
-        parameters=[
-                {'brightness_threshold': 250.0},
-                {'area_threshold': 10.0}
-        ]
+        parameters=[{
+            'brightness_threshold': 250.0,
+            'area_threshold': 10.0,
+        }]
     )
 
     return launch.LaunchDescription([
