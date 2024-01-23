@@ -21,7 +21,7 @@ cv::Mat processImage(const cv::Mat& img) {
     cv::cvtColor(img_processed, color_image, cv::COLOR_GRAY2BGR);
     cv::circle(color_image, maxLoc, 5, cv::Scalar(0, 0, 255), 2); // Red circle
 
-    return img_processed;
+    return color_image;
 }
 
 class BrightSpotDetectorNode : public rclcpp::Node {
