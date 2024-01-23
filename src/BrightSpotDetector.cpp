@@ -11,14 +11,15 @@ cv::Mat processImage(const cv::Mat& img) {
     if (blurRadius % 2 == 0) ++blurRadius;
     cv::GaussianBlur(img, img_processed, cv::Size(blurRadius, blurRadius), 0);
 
-    // Convert the grayscale image to BGR for displaying the red circle
-    cv::cvtColor(img_processed, img_processed, cv::COLOR_GRAY2BGR);
-
     // Find the brightest spot and draw a red circle
     double minVal, maxVal;
     cv::Point minLoc, maxLoc;
     cv::minMaxLoc(img_processed, &minVal, &maxVal, &minLoc, &maxLoc);
-    cv::circle(img_processed, maxLoc, 5, cv::Scalar(0, 0, 255), 2); // Red circle
+
+    // Convert the grayscale image to BGR for displaying the red circle
+    cv::Mat color_image;
+    cv::cvtColor(img_processed, color_image, cv::COLOR_GRAY2BGR);
+    cv::circle(color_image, maxLoc, 5, cv::Scalar(0, 0, 255), 2); // Red circle
 
     return img_processed;
 }
