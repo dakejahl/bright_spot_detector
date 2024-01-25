@@ -1,5 +1,5 @@
 cmake_minimum_required(VERSION 3.8)
-project(bright_spot_detector)
+project(pc_overlay)
 
 if(CMAKE_COMPILER_IS_GNUCXX OR CMAKE_CXX_COMPILER_ID MATCHES "Clang")
     add_compile_options(-Wall -Wextra -Wpedantic)
@@ -11,25 +11,40 @@ find_package(rclcpp REQUIRED)
 find_package(sensor_msgs REQUIRED)
 find_package(cv_bridge REQUIRED)
 find_package(OpenCV REQUIRED)
+find_package(PCL REQUIRED COMPONENTS common io)
+find_package(pcl_conversions REQUIRED)
+
+# Include directories for PCL and pcl_conversions
+include_directories(
+  include
+  ${PCL_INCLUDE_DIRS}
+)
 
 # Define the executable
-add_executable(bright_spot_detector src/BrightSpotDetector.cpp)
+add_executable(pc_overlay src/BrightSpotDetector.cpp)
 
 # Specify dependencies to link against
-ament_target_dependencies(bright_spot_detector
+ament_target_dependencies(pc_overlay
   rclcpp
   sensor_msgs
   cv_bridge
   OpenCV
+  PCL
+  pcl_conversions
 )
 
-target_include_directories(bright_spot_detector PUBLIC
+# Link PCL libraries
+target_link_libraries(pc_overlay
+  ${PCL_LIBRARIES}
+)
+
+target_include_directories(pc_overlay PUBLIC
   $<BUILD_INTERFACE:${CMAKE_CURRENT_SOURCE_DIR}/include>
   $<INSTALL_INTERFACE:include>)
 
-target_compile_features(bright_spot_detector PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
+target_compile_features(pc_overlay PUBLIC c_std_99 cxx_std_17)  # Require C99 and C++17
 
-install(TARGETS bright_spot_detector
+install(TARGETS pc_overlay
   DESTINATION lib/${PROJECT_NAME})
 
 # Testing and linting setup (optional, but recommended for quality code)

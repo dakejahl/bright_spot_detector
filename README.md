@@ -24,4 +24,10 @@ TARGET_PORT=5600 #
 
 ```
 
+TODO:
+camera intrinsics:
+```
+rs-enumerate-devices -c
+```
+
 ![image](resources/example.png)

@@ -1,110 +1,136 @@
 #include <memory>
+#include <mutex>
 #include <rclcpp/rclcpp.hpp>
 #include <sensor_msgs/msg/image.hpp>
+#include <sensor_msgs/msg/point_cloud2.hpp>
 #include <cv_bridge/cv_bridge.h>
 #include <opencv2/opencv.hpp>
 #include <opencv2/imgproc.hpp>
-#include <cmath>
+#include <pcl_conversions/pcl_conversions.h>
+#include <pcl/point_types.h>
+#include <pcl/point_cloud.h>
 
-class BrightSpotDetectorNode : public rclcpp::Node
+class PointCloudOverlayNode : public rclcpp::Node
 {
 public:
-	BrightSpotDetectorNode();
+	PointCloudOverlayNode();
 
 private:
-	void image_callback(const sensor_msgs::msg::Image::SharedPtr msg);
-	cv::Mat processImage(const cv::Mat& img);
+	void image_callback(const sensor_msgs::msg::Image::SharedPtr img_msg);
+	void point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg);
+	cv::Mat overlayPointCloud(const cv::Mat& rgb_image, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud);
 
 	rclcpp::Subscription<sensor_msgs::msg::Image>::SharedPtr _image_sub;
+	rclcpp::Subscription<sensor_msgs::msg::PointCloud2>::SharedPtr _cloud_sub;
 	rclcpp::Publisher<sensor_msgs::msg::Image>::SharedPtr _image_pub;
+
+	pcl::PointCloud<pcl::PointXYZ>::Ptr _latest_cloud;
+	std::mutex _cloud_mutex;
 };
 
-BrightSpotDetectorNode::BrightSpotDetectorNode() : Node("bright_spot_detector_node")
+PointCloudOverlayNode::PointCloudOverlayNode() : Node("point_cloud_overlay_node"), _latest_cloud(new pcl::PointCloud<pcl::PointXYZ>)
 {
-	this->declare_parameter("brightness_threshold", 250);
-	this->declare_parameter("area_threshold", 25);
-
 	auto qos = rclcpp::QoS(rclcpp::QoSInitialization(RMW_QOS_POLICY_HISTORY_KEEP_LAST, 5));
 	qos.reliability(RMW_QOS_POLICY_RELIABILITY_RELIABLE);
 
 	_image_sub = this->create_subscription<sensor_msgs::msg::Image>(
-		"/camera/infra1/image_rect_raw", qos, std::bind(&BrightSpotDetectorNode::image_callback, this, std::placeholders::_1));
+		"/camera/color/image_raw", qos, std::bind(&PointCloudOverlayNode::image_callback, this, std::placeholders::_1));
+
+	_cloud_sub = this->create_subscription<sensor_msgs::msg::PointCloud2>(
+		"/visual_slam/vis/observations_cloud", qos, std::bind(&PointCloudOverlayNode::point_cloud_callback, this, std::placeholders::_1));
 
 	_image_pub = this->create_publisher<sensor_msgs::msg::Image>(
-		"/bright_spot_detector", qos);
+		"/overlay_image", qos);
 }
 
-void BrightSpotDetectorNode::image_callback(const sensor_msgs::msg::Image::SharedPtr msg)
+void PointCloudOverlayNode::image_callback(const sensor_msgs::msg::Image::SharedPtr img_msg)
 {
-	try {
-		cv_bridge::CvImagePtr cv_ptr = cv_bridge::toCvCopy(msg, sensor_msgs::image_encodings::MONO8);
-		cv::Mat processed_image = processImage(cv_ptr->image);
+	cv::Mat rgb_image = cv_bridge::toCvCopy(img_msg, "bgr8")->image;
 
-		// Convert the processed OpenCV Image back to ROS Image message
-		cv_bridge::CvImage out_msg;
-		out_msg.header = msg->header; // Same timestamp and tf frame as input image
-		out_msg.encoding = sensor_msgs::image_encodings::BGR8;
-		out_msg.image = processed_image;
-
-		// Publish the processed image
-		_image_pub->publish(*out_msg.toImageMsg().get());
-
-	} catch (const cv_bridge::Exception& e) {
-		RCLCPP_ERROR(this->get_logger(), "cv_bridge exception: %s", e.what());
+	pcl::PointCloud<pcl::PointXYZ>::Ptr cloud;
+	{
+		std::lock_guard<std::mutex> lock(_cloud_mutex);
+		cloud = _latest_cloud;
 	}
-}
 
-cv::Mat BrightSpotDetectorNode::processImage(const cv::Mat& img)
-{
-	// Get parameter values
-	int brightness_threshold, area_threshold;
-	this->get_parameter("brightness_threshold", brightness_threshold);
-	this->get_parameter("area_threshold", area_threshold);
-
-	// Threshold the image to isolate bright areas
-	cv::Mat img_thresholded;
-	cv::threshold(img, img_thresholded, brightness_threshold, 255, cv::THRESH_BINARY);
-
-	// Find contours
-	std::vector<std::vector<cv::Point>> contours;
-	cv::findContours(img_thresholded, contours, cv::RETR_EXTERNAL, cv::CHAIN_APPROX_SIMPLE);
-
-	// Convert the grayscale image to BGR for displaying colored circles
-	cv::Mat color_image;
-	cv::cvtColor(img, color_image, cv::COLOR_GRAY2BGR);
-
-	// Keep track of biggest contour
-	int biggest_radius = 0;
-	cv::Point biggest_contour_center;
-
-	// Process each contour
-	for (const auto& contour : contours) {
-		double area = cv::contourArea(contour);
-		if (area > area_threshold) {
-			cv::Moments moment = cv::moments(contour);
-			cv::Point center(static_cast<int>(moment.m10 / moment.m00), static_cast<int>(moment.m01 / moment.m00));
-
-			// Calculate radius proportional to the square root of the area
-			int radius = static_cast<int>(sqrt(area) / 2);
-			cv::circle(color_image, center, radius, cv::Scalar(0, 0, 255), 1, cv::LINE_AA); // Red circle
-
-			if (radius > biggest_radius) {
-				biggest_radius = radius;
-				biggest_contour_center = center;
-			}
+	if (!rgb_image.empty()) {
+		// TODO: timestamp pointcloud
+		if (cloud) {
+			cv::Mat overlayed_image = overlayPointCloud(rgb_image, cloud);
+			// Convert to ROS message and publish
+			sensor_msgs::msg::Image::SharedPtr msg = cv_bridge::CvImage(img_msg->header, "bgr8", overlayed_image).toImageMsg();
+			_image_pub->publish(*msg);
+		} else {
+			_image_pub->publish(*img_msg);
 		}
+
 	}
+}
 
-	// Circle biggest contour in green
-	cv::circle(color_image, biggest_contour_center, biggest_radius, cv::Scalar(0, 255, 0), 1, cv::LINE_AA); // Green circle
+void PointCloudOverlayNode::point_cloud_callback(const sensor_msgs::msg::PointCloud2::SharedPtr cloud_msg)
+{
+	std::lock_guard<std::mutex> lock(_cloud_mutex);
+	pcl::fromROSMsg(*cloud_msg, *_latest_cloud);
+}
 
-	return color_image; // Return the color image with circles marking the blobs' centers
+cv::Point2d convert3DPointTo2D(const pcl::PointXYZ& point) {
+
+	Intrinsic of "Infrared" / 640x480 / {RGB8/BGR8/RGBA8/BGRA8/UYVY}
+	Width:        640
+	Height:       480
+	PPX:          325.685089111328
+	PPY:          238.197769165039
+	Fx:           387.751678466797
+	Fy:           387.751678466797
+	Distortion:   Brown Conrady
+	Coeffs:       0       0       0       0       0
+	FOV (deg):    79.06 x 63.51
+
+	double fx = 387.7516784667969;
+	double cx = 325.6850891113281;
+	double fy = 387.7516784667969;
+	double cy = 238.19776916503906;
+
+
+    // Camera intrinsic parameters
+    double fx = 242.344802856445;
+    double cx = 243.553192138672;
+
+    double fy = 242.344802856445;
+    double cy = 133.873596191406;
+
+    // Assuming point.z is not zero
+    double x = point.x / point.z;
+    double y = point.y / point.z;
+
+    // Applying the intrinsic parameters
+    double u = fx * x + cx;
+    double v = fy * y + cy;
+
+    return cv::Point2d(u, v);
+}
+
+cv::Mat PointCloudOverlayNode::overlayPointCloud(const cv::Mat& rgb_image, const pcl::PointCloud<pcl::PointXYZ>::Ptr cloud) {
+    cv::Mat overlayed_image = rgb_image.clone();
+
+    for (const auto& point : cloud->points) {
+        if (point.z != 0) {  // Ensure that point.z is not zero to avoid division by zero
+            cv::Point2d image_point = convert3DPointTo2D(point);
+            // Check if the point falls within the image frame
+            if (image_point.x >= 0 && image_point.x < overlayed_image.cols &&
+                image_point.y >= 0 && image_point.y < overlayed_image.rows) {
+                cv::circle(overlayed_image, image_point, 3, cv::Scalar(0, 0, 255), -1); // Draw red circle
+            }
+        }
+    }
+
+    return overlayed_image;
 }
 
 int main(int argc, char **argv)
 {
 	rclcpp::init(argc, argv);
-	rclcpp::spin(std::make_shared<BrightSpotDetectorNode>());
+	rclcpp::spin(std::make_shared<PointCloudOverlayNode>());
 	rclcpp::shutdown();
 	return 0;
 }

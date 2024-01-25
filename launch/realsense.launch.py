@@ -9,26 +9,23 @@ def generate_launch_description():
         executable='realsense2_camera_node',
         name='realsense_camera',
         parameters=[{
-            'enable_infra1': True,  # Enable the first IR camera
-            'enable_infra2': False, # Disable the second IR camera if not needed
-            'enable_color': False,  # Disable other streams if not needed
+            'enable_infra1': True,
+            'enable_infra2': False,
+            'enable_color': True,
             'enable_depth': False,
             'depth_module.emitter_enabled': 0,
+            'depth_module.profile': '640x480x15',
         }],
     )
 
     # Brightest spot detector node
-    bright_spot_detector_node = Node(
-        package='bright_spot_detector',  # Replace with your package name
-        executable='bright_spot_detector',  # Replace with the name of your executable
-        name='bright_spot_detector',
-        parameters=[{
-            'brightness_threshold': 250,
-            'area_threshold': 10,
-        }]
+    pc_overlay_node = Node(
+        package='pc_overlay',
+        executable='pc_overlay',
+        name='pc_overlay',
     )
 
     return launch.LaunchDescription([
         realsense_camera_node,
-        bright_spot_detector_node
+        pc_overlay_node
     ])
